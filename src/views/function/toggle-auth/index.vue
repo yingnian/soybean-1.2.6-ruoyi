@@ -51,7 +51,8 @@ async function handleToggleAccount(account: Account) {
   loginAccount.value = account.key;
 
   startLoading();
-  await authStore.login(account.userName, account.password, false);
+  // TO DO
+  await authStore.login(account.userName, account.password, '1', '1', false);
   tabStore.initTabStore(route);
   endLoading();
   appStore.reloadPage();

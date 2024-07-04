@@ -123,6 +123,9 @@ importers:
       eslint-plugin-vue:
         specifier: 9.26.0
         version: 9.26.0(eslint@9.5.0)
+      jsencrypt:
+        specifier: ^3.3.2
+        version: 3.3.2
       lint-staged:
         specifier: 15.2.7
         version: 15.2.7
@@ -2901,6 +2904,9 @@ packages:
 
   jsbn@1.1.0:
     resolution: {integrity: sha512-4bYVV3aAMtDTTu4+xsDYa6sy9GyJ69/amsu9sYF2zqjiEoZA5xJi3BrfX3uY+/IekIu7MwdObdbDWpoZdBv3/A==}
+
+  jsencrypt@3.3.2:
+    resolution: {integrity: sha512-arQR1R1ESGdAxY7ZheWr12wCaF2yF47v5qpB76TtV64H1pyGudk9Hvw8Y9tb/FiTIaaTRUyaSnm5T/Y53Ghm/A==}
 
   jsesc@0.5.0:
     resolution: {integrity: sha512-uZz5UnB7u4T9LvwmFqXii7pZSouaRPorGs5who1Ip7VO0wxanFvBL7GkM6dTHlgX+jhBApRetaWpnDabOeTcnA==}
@@ -7671,6 +7677,8 @@ snapshots:
       argparse: 2.0.1
 
   jsbn@1.1.0: {}
+
+  jsencrypt@3.3.2: {}
 
   jsesc@0.5.0: {}
 

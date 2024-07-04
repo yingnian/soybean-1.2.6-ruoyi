@@ -8,7 +8,8 @@ import { router } from '@/router';
 import { createStaticRoutes, getAuthVueRoutes } from '@/router/routes';
 import { ROOT_ROUTE } from '@/router/routes/builtin';
 import { getRouteName, getRoutePath } from '@/router/elegant/transform';
-import { fetchGetConstantRoutes, fetchGetUserRoutes, fetchIsRouteExist } from '@/service/api';
+import { fetchIsRouteExist } from '@/service/api';
+import { fetchGetUserRoutes } from '@/service/api/system/login';
 import { useAppStore } from '../app';
 import { useAuthStore } from '../auth';
 import { useTabStore } from '../tab';
@@ -68,14 +69,87 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
   /** auth routes */
   const authRoutes = shallowRef<ElegantConstRoute[]>([]);
 
-  function addAuthRoutes(routes: ElegantConstRoute[]) {
-    const authRoutesMap = new Map<string, ElegantConstRoute>([]);
+  // 若依路由转换为soybean路由
+  const setRuoyiRouteToSoybean = (routeAry: any[], newAry: any[] | null, parentName: string) => {
+    routeAry.forEach((item, index) => {
+      const i = item.meta ? item : item.children[0];
+      const _path = i.path.split('/').length > 1 ? i.path.split('/')[1] : i.path;
+      let path = '';
+      let name = '';
+      const currentParentMenu = '';
+      let component = '';
+      const pathFromParentName =
+        parentName && parentName.split('_').length > 1 ? parentName.split('_').join('/') : parentName;
+      switch (i.meta.menuType) {
+        case 'M': // 目录
+          component = 'layout.base';
+          path = parentName ? `${pathFromParentName}/${_path}` : `/${_path}`;
+          name = parentName ? `${parentName}_${_path}` : _path;
+          break;
+        case 'C': // 菜单
+          if (i.component === 'iframe') {
+            path = parentName ? `/${pathFromParentName}/${index}` : `/leveloneIframe_${index}`;
+            name = parentName ? `${parentName}_${index}` : `leveloneIframe_${index}`;
+          } else {
+            path = parentName ? `/${pathFromParentName}/${_path}` : `/${index}`;
+            name = parentName ? `${parentName}_${_path}` : _path;
+            component = `view.${name}`;
+          }
+          break;
+        default: // 按钮级不计入路由范围，所以写什么都无所谓
+          name = i.path;
+          path = i.path;
+      }
 
-    routes.forEach(route => {
-      authRoutesMap.set(route.name, route);
+      const tempItem = {
+        name,
+        path,
+        realPath: (item && item.realPath) || '',
+        component: component || 'layout.base',
+        children: i.children && i.children.length ? [] : null,
+        meta: {
+          ...i.meta,
+          localIcon: i.meta.icon,
+          requiresAuth: true,
+          order: i.meta.orderNum,
+          status: Number(i.meta.status) || 1,
+          keepAlive: !Number(i.meta.isCache),
+          isFrame: !Number(i.meta.isFrame),
+          hideInMenu: Boolean(Number(i.meta.hide)),
+          activeMenu: i.meta.activeMenu || '',
+          affix: !Number(i.meta.affix) || false,
+          singleLayout: i.meta.parentId === 0 && i.meta.menuType === 'C' ? 'base' : '',
+          currentParentMenu,
+          href: '',
+          multiTab: true
+        }
+      };
+
+      if (i.children && i.children.length) {
+        setRuoyiRouteToSoybean(i.children, tempItem.children, name);
+      }
+      if (Array.isArray(newAry)) newAry.push(tempItem);
     });
+  };
 
-    authRoutes.value = Array.from(authRoutesMap.values());
+  function addAuthRoutes(routes: ElegantConstRoute[]) {
+    const newRouteAry: any[] = [];
+    setRuoyiRouteToSoybean(routes, newRouteAry, '');
+
+    newRouteAry.unshift({
+      name: 'home',
+      path: '/home',
+      component: 'layout.base$view.home',
+      meta: {
+        title: '首页',
+        requiresAuth: true,
+        icon: 'PhHouseFill',
+        localIcon: 'PhHouseFill',
+        order: 1
+      }
+    });
+    console.log('若依转换过后的路由', newRouteAry);
+    authRoutes.value = newRouteAry;
   }
 
   const removeRouteFns: (() => void)[] = [];
@@ -192,24 +266,26 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
     removeRouteFns.length = 0;
   }
 
-  /** init constant route */
+  /** 初始化常量路由 */
   async function initConstantRoute() {
     if (isInitConstantRoute.value) return;
 
     const staticRoute = createStaticRoutes();
 
-    if (authRouteMode.value === 'static') {
-      addConstantRoutes(staticRoute.constantRoutes);
-    } else {
-      const { data, error } = await fetchGetConstantRoutes();
+    addConstantRoutes(staticRoute.constantRoutes);
+    // 由于若依本身没有此配置（常量路由存在数据库中），所以就直接赋予本地路由
+    // if (authRouteMode.value === 'static') {
+    //   addConstantRoutes(staticRoute.constantRoutes);
+    // } else {
+    //   const { data, error } = await fetchGetConstantRoutes();
 
-      if (!error) {
-        addConstantRoutes(data);
-      } else {
-        // if fetch constant routes failed, use static constant routes
-        addConstantRoutes(staticRoute.constantRoutes);
-      }
-    }
+    //   if (!error) {
+    //     addConstantRoutes(data);
+    //   } else {
+    //     // if fetch constant routes failed, use static constant routes
+    //     addConstantRoutes(staticRoute.constantRoutes);
+    //   }
+    // }
 
     handleConstantAndAuthRoutes();
 
@@ -244,20 +320,18 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
     setIsInitAuthRoute(true);
   }
 
-  /** Init dynamic auth route */
+  /** 初始化动态路由 */
   async function initDynamicAuthRoute() {
-    const { data, error } = await fetchGetUserRoutes();
+    const { data: routes, error } = await fetchGetUserRoutes();
 
     if (!error) {
-      const { routes, home } = data;
-
       addAuthRoutes(routes);
 
       handleConstantAndAuthRoutes();
 
-      setRouteHome(home);
+      setRouteHome(import.meta.env.VITE_ROUTE_HOME);
 
-      handleUpdateRootRouteRedirect(home);
+      handleUpdateRootRouteRedirect(import.meta.env.VITE_ROUTE_HOME);
 
       setIsInitAuthRoute(true);
     } else {

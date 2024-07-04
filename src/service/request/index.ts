@@ -97,7 +97,7 @@ export const request = createFlatRequest<App.Service.Response, RequestInstanceSt
       return null;
     },
     transformBackendResponse(response) {
-      return response.data.data;
+      return response.data.data ? response.data.data : response.data;
     },
     onError(error) {
       // when the request is fail, you can show error message
@@ -127,6 +127,32 @@ export const request = createFlatRequest<App.Service.Response, RequestInstanceSt
     }
   }
 );
+
+/** 再次封装了一次，主要是为了适配原来的代码（不想再改一遍） 新的接口可以直接引用 request */
+export const HR = {
+  get: async <T>(url: string, params?: object, config?: any) => {
+    return request<T>({
+      url,
+      method: 'get',
+      params,
+      ...config
+    });
+  },
+  post: async <T>(url: string, data?: any, config?: any) => {
+    return request<T>({
+      url,
+      method: 'post',
+      data,
+      ...config
+    });
+  },
+  delete: async <T>(url: string) => {
+    return request<T>({
+      url,
+      method: 'delet'
+    });
+  }
+};
 
 export const demoRequest = createRequest<App.Service.DemoResponse>(
   {

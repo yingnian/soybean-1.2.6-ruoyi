@@ -56,11 +56,39 @@ declare namespace Api {
       refreshToken: string;
     }
 
+    interface DeptInfo {
+      deptId: number;
+      deptName: string;
+      leader: string;
+      parentId: number;
+      status: string;
+      children: DeptInfo[];
+    }
+
+    interface RoleInfo {
+      admin: boolean;
+      roleKey: string;
+      roleName: string;
+      status: string;
+    }
+
     interface UserInfo {
       userId: string;
       userName: string;
       roles: string[];
       buttons: string[];
+
+      dept: DeptInfo | null;
+      deptId: number;
+      email: string;
+      loginDate: string;
+      loginIp: string;
+      nickName: string;
+      phonenumber: string;
+      remark: string;
+      sex: string;
+      status: string;
+      avatar: string;
     }
   }
 

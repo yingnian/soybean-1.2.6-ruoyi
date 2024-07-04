@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive } from 'vue';
-import { $t } from '@/locales';
-import { loginModuleRecord } from '@/constants/app';
+import type { FormRules } from 'naive-ui';
+import { reactive } from 'vue';
+import { useNaiveForm } from '@/hooks/common/form';
 import { useRouterPush } from '@/hooks/common/router';
-import { useFormRules, useNaiveForm } from '@/hooks/common/form';
+import { $t } from '@/locales';
+import { getCodeImg } from '@/service/api/system/login';
 import { useAuthStore } from '@/store/modules/auth';
 
 defineOptions({
@@ -17,61 +18,36 @@ const { formRef, validate } = useNaiveForm();
 interface FormModel {
   userName: string;
   password: string;
+  imgCode: string;
+  uuid: string;
 }
 
 const model: FormModel = reactive({
-  userName: 'Soybean',
-  password: '123456'
+  userName: 'admin',
+  password: 'Sdyx@0537',
+  imgCode: '',
+  uuid: ''
 });
 
-const rules = computed<Record<keyof FormModel, App.Global.FormRule[]>>(() => {
-  // inside computed to make locale reactive, if not apply i18n, you can define it without computed
-  const { formRules } = useFormRules();
-
-  return {
-    userName: formRules.userName,
-    password: formRules.pwd
-  };
-});
+const rules: FormRules = {
+  userName: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  imgCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
+};
 
 async function handleSubmit() {
   await validate();
-  await authStore.login(model.userName, model.password);
+  await authStore.login(model.userName, model.password, model.imgCode, model.uuid);
 }
 
-type AccountKey = 'super' | 'admin' | 'user';
-
-interface Account {
-  key: AccountKey;
-  label: string;
-  userName: string;
-  password: string;
-}
-
-const accounts = computed<Account[]>(() => [
-  {
-    key: 'super',
-    label: $t('page.login.pwdLogin.superAdmin'),
-    userName: 'Super',
-    password: '123456'
-  },
-  {
-    key: 'admin',
-    label: $t('page.login.pwdLogin.admin'),
-    userName: 'Admin',
-    password: '123456'
-  },
-  {
-    key: 'user',
-    label: $t('page.login.pwdLogin.user'),
-    userName: 'User',
-    password: '123456'
-  }
-]);
-
-async function handleAccountLogin(account: Account) {
-  await authStore.login(account.userName, account.password);
-}
+// 获取验证码
+const imgCode = ref<string>();
+const getCodeImgFun = async () => {
+  const { data } = await getCodeImg();
+  imgCode.value = `data:image/gif;base64,${data.img}`;
+  model.uuid = data.uuid;
+};
+getCodeImgFun();
 </script>
 
 <template>
@@ -87,6 +63,17 @@ async function handleAccountLogin(account: Account) {
         :placeholder="$t('page.login.common.passwordPlaceholder')"
       />
     </NFormItem>
+    <NFormItem path="imgCode">
+      <NInput
+        v-model:value="model.imgCode"
+        :maxlength="6"
+        placeholder="验证码,点击图片刷新"
+        @keyup.enter="handleSubmit"
+      />
+      <div class="pl-8px">
+        <img class="cursor-pointer" :src="imgCode" alt="" @click="getCodeImgFun()" />
+      </div>
+    </NFormItem>
     <NSpace vertical :size="24">
       <div class="flex-y-center justify-between">
         <NCheckbox>{{ $t('page.login.pwdLogin.rememberMe') }}</NCheckbox>
@@ -97,20 +84,6 @@ async function handleAccountLogin(account: Account) {
       <NButton type="primary" size="large" round block :loading="authStore.loginLoading" @click="handleSubmit">
         {{ $t('common.confirm') }}
       </NButton>
-      <div class="flex-y-center justify-between gap-12px">
-        <NButton class="flex-1" block @click="toggleLoginModule('code-login')">
-          {{ $t(loginModuleRecord['code-login']) }}
-        </NButton>
-        <NButton class="flex-1" block @click="toggleLoginModule('register')">
-          {{ $t(loginModuleRecord.register) }}
-        </NButton>
-      </div>
-      <NDivider class="text-14px text-#666 !m-0">{{ $t('page.login.pwdLogin.otherAccountLogin') }}</NDivider>
-      <div class="flex-center gap-12px">
-        <NButton v-for="item in accounts" :key="item.key" type="primary" @click="handleAccountLogin(item)">
-          {{ item.label }}
-        </NButton>
-      </div>
     </NSpace>
   </NForm>
 </template>

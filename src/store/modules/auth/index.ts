@@ -4,7 +4,7 @@ import { defineStore } from 'pinia';
 import { useLoading } from '@sa/hooks';
 import { SetupStoreId } from '@/enum';
 import { useRouterPush } from '@/hooks/common/router';
-import { fetchGetUserInfo, fetchLogin } from '@/service/api';
+import { fetchGetUserInfo, fetchLogin } from '@/service/api/system/login';
 import { localStg } from '@/utils/storage';
 import { $t } from '@/locales';
 import { useRouteStore } from '../route';
@@ -24,8 +24,23 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     userId: '',
     userName: '',
     roles: [],
-    buttons: []
+    buttons: [],
+
+    dept: null,
+    deptId: 0,
+    email: '',
+    loginDate: '',
+    loginIp: '',
+    nickName: '',
+    sex: '',
+    status: '',
+    phonenumber: '',
+    remark: '',
+    avatar: ''
   });
+
+  /** 权限列表 */
+  const permissions = ref<string[] | null>();
 
   /** is super role in static route */
   const isStaticSuper = computed(() => {
@@ -60,10 +75,10 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
    * @param password Password
    * @param [redirect=true] Whether to redirect after login. Default is `true`
    */
-  async function login(userName: string, password: string, redirect = true) {
+  async function login(userName: string, password: string, code: string, uuid: string, redirect = true) {
     startLoading();
 
-    const { data: loginToken, error } = await fetchLogin(userName, password);
+    const { data: loginToken, error } = await fetchLogin(userName, password, code, uuid);
 
     if (!error) {
       const pass = await loginByToken(loginToken);
@@ -91,11 +106,9 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   }
 
   async function loginByToken(loginToken: Api.Auth.LoginToken) {
-    // 1. stored in the localStorage, the later requests need it in headers
     localStg.set('token', loginToken.token);
     localStg.set('refreshToken', loginToken.refreshToken);
 
-    // 2. get user info
     const pass = await getUserInfo();
 
     if (pass) {
@@ -111,8 +124,8 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     const { data: info, error } = await fetchGetUserInfo();
 
     if (!error) {
-      // update store
-      Object.assign(userInfo, info);
+      Object.assign(userInfo, info.user);
+      permissions.value = info.permissions;
 
       return true;
     }
@@ -135,6 +148,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
   return {
     token,
     userInfo,
+    permissions,
     isStaticSuper,
     isLogin,
     loginLoading,
