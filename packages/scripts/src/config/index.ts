@@ -13,18 +13,18 @@ const defaultOptions: CliOption = {
     '!node_modules/**'
   ],
   gitCommitTypes: [
-    ['feat', 'A new feature'],
-    ['fix', 'A bug fix'],
-    ['docs', 'Documentation only changes'],
-    ['style', 'Changes that do not affect the meaning of the code'],
-    ['refactor', 'A code change that neither fixes a bug nor adds a feature'],
-    ['perf', 'A code change that improves performance'],
-    ['optimize', 'A code change that optimizes code quality'],
-    ['test', 'Adding missing tests or correcting existing tests'],
-    ['build', 'Changes that affect the build system or external dependencies'],
-    ['ci', 'Changes to our CI configuration files and scripts'],
-    ['chore', "Other changes that don't modify src or test files"],
-    ['revert', 'Reverts a previous commit']
+    ['feat', '新功能'],
+    ['fix', 'bug 修复'],
+    ['docs', '文档修改'],
+    ['style', '样式修改'],
+    ['refactor', '代码更改既没有修复错误也没有添加功能'],
+    ['perf', '改进代码以提高性能'],
+    ['optimize', '优化代码质量的代码更改'],
+    ['test', '添加缺失的测试或更正现有的测试'],
+    ['build', '影响构建系统或外部依赖项的更改'],
+    ['ci', '更改我们的 CI 配置文件和脚本'],
+    ['chore', '不修改 src 或测试文件的其他更改'],
+    ['revert', '恢复之前的提交']
   ],
   gitCommitScopes: [
     ['projects', 'project'],

@@ -41,19 +41,19 @@ export async function gitCommit(
     {
       name: 'types',
       type: 'select',
-      message: 'Please select a type',
+      message: '请选择提交类型',
       choices: typesChoices
     },
     {
       name: 'scopes',
       type: 'select',
-      message: 'Please select a scope',
+      message: '请选择波及范围',
       choices: scopesChoices
     },
     {
       name: 'description',
       type: 'text',
-      message: `Please enter a description (add prefix ${yellow('!')} to indicate breaking change)`
+      message: `请输入描述（添加前缀 ${yellow('!')} 以表示重大更改）`
     }
   ]);
 
