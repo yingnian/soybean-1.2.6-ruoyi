@@ -160,7 +160,9 @@ const local: App.I18n.Schema = {
     exception: 'Exception',
     exception_403: '403',
     exception_404: '404',
-    exception_500: '500'
+    exception_500: '500',
+    system: 'system',
+    system_menu: 'menu'
   },
   page: {
     login: {
