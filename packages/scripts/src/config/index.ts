@@ -13,31 +13,14 @@ const defaultOptions: CliOption = {
     '!node_modules/**'
   ],
   gitCommitTypes: [
-    ['feat', '新功能'],
+    ['feat', '功能变更'],
     ['fix', 'bug 修复'],
-    ['style', '样式修改'],
-    ['other', '其他修改'],
-    ['refactor', '代码更改既没有修复错误也没有添加功能'],
-    ['perf', '改进代码以提高性能'],
-    ['optimize', '优化代码质量的代码更改'],
-    ['test', '添加缺失的测试或更正现有的测试'],
-    ['build', '影响构建系统或外部依赖项的更改'],
-    ['ci', '更改我们的 CI 配置文件和脚本'],
-    ['chore', '不修改 src 或测试文件的其他更改'],
-    ['docs', '文档修改'],
-    ['revert', '恢复之前的提交']
+    ['other', '其他修改']
   ],
   gitCommitScopes: [
-    ['projects', 'project'],
-    ['packages', 'packages'],
-    ['components', 'components'],
-    ['hooks', 'hook functions'],
-    ['utils', 'utils functions'],
-    ['types', 'TS declaration'],
-    ['styles', 'style'],
-    ['deps', 'project dependencies'],
-    ['release', 'release project'],
-    ['other', 'other changes']
+    ['projects', '整个项目'],
+    ['components', '组件内'],
+    ['other', '其他']
   ],
   ncuCommandArgs: ['--deep', '-u'],
   changelogOptions: {}

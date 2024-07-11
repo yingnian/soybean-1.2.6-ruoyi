@@ -69,6 +69,12 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
   /** auth routes */
   const authRoutes = shallowRef<ElegantConstRoute[]>([]);
 
+  /** 临时性措施 - 为了适配0.10.3版本的layout */
+  function setLayout(str: string) {
+    if (['self', 'iframe', 'base', 'basic'].includes(str)) return 'base';
+    return str;
+  }
+
   // 若依路由转换为soybean路由
   const setRuoyiRouteToSoybean = (routeAry: any[], newAry: any[] | null, parentName: string) => {
     routeAry.forEach((item, index) => {
@@ -76,13 +82,12 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
       const _path = i.path.split('/').length > 1 ? i.path.split('/')[1] : i.path;
       let path = '';
       let name = '';
-      const currentParentMenu = '';
       let component = '';
       const pathFromParentName =
         parentName && parentName.split('_').length > 1 ? parentName.split('_').join('/') : parentName;
       switch (i.meta.menuType) {
         case 'M': // 目录
-          component = 'layout.base';
+          component = `layout.${setLayout(item.component)}`;
           path = parentName ? `${pathFromParentName}/${_path}` : `/${_path}`;
           name = parentName ? `${parentName}_${_path}` : _path;
           break;
@@ -100,7 +105,6 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
           name = i.path;
           path = i.path;
       }
-
       const tempItem = {
         name,
         path,
@@ -118,10 +122,10 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
           hideInMenu: Boolean(Number(i.meta.hide)),
           activeMenu: i.meta.activeMenu || '',
           affix: !Number(i.meta.affix) || false,
-          singleLayout: i.meta.parentId === 0 && i.meta.menuType === 'C' ? 'base' : '',
-          currentParentMenu,
           href: '',
-          multiTab: true
+          multiTab: i.meta.multiTab,
+          i18nKey: i.meta.i18nKey,
+          query: item.query
         }
       };
 
@@ -439,6 +443,20 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
     return allRoutes.find(route => route.name === key)?.meta || null;
   }
 
+  /** query的分割 */
+  function parseQueryString(queryString: string) {
+    if (!queryString || !queryString.startsWith('?')) {
+      return [];
+    }
+    const paramsArray = queryString.slice(1).split('&');
+    const result = paramsArray.map(param => {
+      const [key, value] = param.split('=');
+      return { key: decodeURIComponent(key), value: decodeURIComponent(value) };
+    });
+
+    return result;
+  }
+
   /**
    * Get route query of meta by key
    *
@@ -448,8 +466,8 @@ export const useRouteStore = defineStore(SetupStoreId.Route, () => {
     const meta = getRouteMetaByKey(key);
 
     const query: Record<string, string> = {};
-
-    meta?.query?.forEach(item => {
+    const queryAry = parseQueryString(meta?.query || '');
+    queryAry.forEach(item => {
       query[item.key] = item.value;
     });
 

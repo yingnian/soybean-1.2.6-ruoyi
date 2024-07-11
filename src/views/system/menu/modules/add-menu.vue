@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { FormInst, FormRules } from 'naive-ui';
+import { cloneDeep } from 'lodash-es';
 // import { useRouteStore } from '@/store';
 import { addMenu, getMenu, treeselect, updateMenu } from '@/service/api/system/menu';
 
@@ -33,7 +34,7 @@ const _form = {
   parentId: 0,
   path: '',
   realPath: '',
-  component: 'basic',
+  component: 'base',
   perms: '',
   isCache: '0',
   isFrame: '1',
@@ -43,7 +44,11 @@ const _form = {
   targetUrl: '',
   activeMenu: '',
   affix: 1,
-  singleLayout: ''
+  isCustomnRoute: false,
+  i18nKey: '',
+  multiTab: false,
+  query: [],
+  buttons: []
 };
 const form = ref<any>({ ..._form });
 const rules: FormRules = {
@@ -51,23 +56,6 @@ const rules: FormRules = {
   path: { required: true, message: '请输入组件目录', trigger: 'blur' },
   targetUrl: { required: true, message: '请输入外链地址', trigger: 'blur' }
 };
-
-const showName = computed(() => {
-  let _name = '';
-  switch (form.value.menuType) {
-    case 'M':
-      _name = '目录名称';
-      break;
-    case 'C':
-      _name = '菜单名称';
-      break;
-    case 'F':
-      _name = '按钮名称';
-      break;
-    default:
-  }
-  return _name;
-});
 
 // 父级菜单选择
 const treeOptions = ref<any[]>();
@@ -83,8 +71,22 @@ const selectTreeNode = (value: number) => {
   form.value.parentId = value;
 };
 
-// 编辑 - 获取详情
+/** query的分割 */
+function parseQueryString(queryString: string) {
+  if (!queryString || !queryString.startsWith('?')) {
+    return [];
+  }
+  const paramsArray = queryString.slice(1).split('&');
+  const result = paramsArray.map(param => {
+    const [key, value] = param.split('=');
+    return { key: decodeURIComponent(key), value: decodeURIComponent(value) };
+  });
+
+  return result;
+}
+
 const originDetail = ref<Menu.SingleItem>();
+/** 编辑 - 获取详情 */
 const getMenuFun = async (id: number | string) => {
   const { data } = await getMenu(id);
   if (data) {
@@ -93,6 +95,7 @@ const getMenuFun = async (id: number | string) => {
       if (data[i]) form.value[i] = data[i];
     });
     form.value.orderNum = Number(data.orderNum);
+    form.value.query = parseQueryString(data.query);
   }
 };
 
@@ -105,7 +108,7 @@ watch(
   }
 );
 
-// 修改菜单类型
+/** 修改菜单类型 */
 const menuTypeChange = (val: string) => {
   if (props.id) {
     const originParentId = originDetail.value ? originDetail.value.parentId : 0;
@@ -113,7 +116,6 @@ const menuTypeChange = (val: string) => {
   }
 };
 
-// 关闭弹窗
 const emit = defineEmits<{
   (e: 'closed'): void;
   (e: 'success'): void;
@@ -130,7 +132,24 @@ const loading = ref<boolean>(false);
 
 // const route = useRouteStore();
 
-// 新增方法
+/** query保存处置 */
+function setQueryString(params: { key: string; value: string }[]) {
+  if (!Array.isArray(params) || !params.length) {
+    return '';
+  }
+
+  const queryString = params
+    .map(param => {
+      const encodedKey = encodeURIComponent(param.key);
+      const encodedValue = encodeURIComponent(param.value);
+      return `${encodedKey}=${encodedValue}`;
+    })
+    .join('&');
+
+  return `?${queryString}`;
+}
+
+/** 新增方法 */
 const addMenuFun = async (params: any) => {
   params.perms = params.perms.trim();
   const { data } = await addMenu(params);
@@ -143,7 +162,7 @@ const addMenuFun = async (params: any) => {
   }
 };
 
-// 编辑方法
+/** 编辑方法 */
 const editMenuFun = async (params: any) => {
   params.perms = params.perms.trim();
   const { data } = await updateMenu(params);
@@ -160,13 +179,15 @@ const saveMenu = () => {
   formRef.value?.validate(err => {
     if (!err) {
       loading.value = true;
+      const params = cloneDeep(form.value);
+      params.buttons = null;
+      params.query = setQueryString(form.value.query);
+
       if (props.id) {
-        editMenuFun(form.value);
+        editMenuFun(params);
       } else {
-        addMenuFun(form.value);
+        addMenuFun(params);
       }
-    } else {
-      console.log(err);
     }
   });
 };
@@ -174,6 +195,10 @@ const saveMenu = () => {
 const iconSelectVisible = ref(false);
 const openIconDialog = () => {
   iconSelectVisible.value = true;
+};
+
+const routePathChange = (val: string) => {
+  form.value.i18nKey = `route.${val}`;
 };
 </script>
 
@@ -189,7 +214,7 @@ const openIconDialog = () => {
       <template #header>{{ headerTitle }}</template>
 
       <NForm ref="formRef" :label-width="120" label-placement="left" :model="form" :rules="rules">
-        <NFormItem label="上级菜单" path="parentId">
+        <NFormItem label="父级" path="parentId">
           <NTreeSelect
             v-model:value="form.parentId"
             key-field="id"
@@ -204,53 +229,41 @@ const openIconDialog = () => {
           <NRadioGroup v-model:value="form.menuType" @update-value="menuTypeChange">
             <NRadio value="M">目录</NRadio>
             <NRadio value="C">菜单</NRadio>
-            <NRadio value="F">按钮</NRadio>
           </NRadioGroup>
         </NFormItem>
-        <NFormItem :label="showName" path="menuName">
+        <NFormItem label="菜单名称" path="menuName">
           <NInput v-model:value="form.menuName" placeholder="" maxlength="20" />
         </NFormItem>
-        <NFormItem v-if="form.menuType != 'F'" path="path">
-          <template v-if="form.menuType === 'C'" #label>
-            <NPopover trigger="hover">
-              <template #trigger>
-                <div class="flex items-center justify-end">
-                  {{ form.component === 'iframe' ? 'iframe地址' : '文件夹名称' }}
-                  <SvgIcon class="ml-0.5 text-lg color-gray" local-icon="notice-icon"></SvgIcon>
-                </div>
-              </template>
-              <div>
-                <p>1. 在没有使用自定义路由的时候，只写其文件夹名称即可；eg: demo</p>
-
-                <p class="mt-2 color-red font-bold">使用了自定义路由时：</p>
-                <p>2. 如果不需要变更父级菜单，则与（1）相同 eg: demo</p>
-                <p>
-                  3. 如果需要变更父级菜单，则需要将其原目录标明（写上其真实的文件目录），格式为
-                  [test]demo，[]内为其父级；如果文件层级超过2层，[test_demo]menu []中间的文件夹名称以_连接即可
-                </p>
-                <p>为iframe地址时，请填写完整的可访问地址（直接在浏览器能打开的那种）</p>
-              </div>
-            </NPopover>
-          </template>
-          <template v-else #label>文件夹名称</template>
-          <NInput v-model:value="form.path" placeholder="" maxlength="100" />
+        <NFormItem label="布局" path="component">
+          <NRadioGroup v-model:value="form.component">
+            <NRadio value="base">项目布局</NRadio>
+            <NRadio value="blank">空白布局</NRadio>
+          </NRadioGroup>
         </NFormItem>
-        <NFormItem v-if="form.menuType === 'C' && form.component === 'self'" label="自定义路由" path="realPath">
+        <!--
+ <NFormItem v-if="form.menuType === 'C'" label="自定义路由">
+          <NRadioGroup v-model:value="form.isCustomnRoute">
+            <NRadio :value="true">是</NRadio>
+            <NRadio :value="false">否</NRadio>
+          </NRadioGroup>
+        </NFormItem>
+-->
+        <NFormItem label="组件路径" path="path">
+          <NInput v-model:value="form.path" placeholder="" maxlength="100" @update:value="routePathChange" />
+        </NFormItem>
+        <NFormItem path="i18nKey">
           <template #label>
             <NPopover trigger="hover">
               <template #trigger>
                 <div class="flex items-center justify-end">
-                  自定义路由
+                  国际化key
                   <SvgIcon class="ml-0.5 text-lg color-gray" local-icon="notice-icon"></SvgIcon>
                 </div>
               </template>
-              <div>
-                <p>不填写时，将取组件路径（父文件夹名称 + 当前文件夹名称）</p>
-                <p>填写时，将取当前填写的字符 eg: ssss（不需要写 '/'，全局唯一 ）</p>
-              </div>
+              <div>如果设置，将用于i18n，此时【菜单名称】将被忽略</div>
             </NPopover>
           </template>
-          <NInput v-model:value="form.realPath" placeholder="不填写时将取其父组件与当前组件的组合" maxlength="100" />
+          <NInput v-model:value="form.i18nKey" placeholder="" maxlength="100" />
         </NFormItem>
         <NFormItem label="排序" path="orderNum">
           <NInputNumber v-model:value="form.orderNum" :precision="0" :max="9999" :min="0" />
@@ -258,33 +271,28 @@ const openIconDialog = () => {
         <NFormItem v-if="form.menuType != 'M'" label="权限标识" path="perms">
           <NInput v-model:value="form.perms" placeholder="" maxlength="100" />
         </NFormItem>
-        <NFormItem v-if="form.menuType != 'F'" path="component">
-          <template #label>
-            <NPopover trigger="hover">
-              <template #trigger>
-                <div class="flex items-center justify-end">
-                  页面类型
-                  <SvgIcon class="ml-0.5 text-lg color-gray" local-icon="notice-icon"></SvgIcon>
-                </div>
-              </template>
-              <div class="mb-2 text-sm">
-                <p class="mb-2 font-bold">注意：</p>
-                <div>
-                  <p class="mb-2">1. 一级目录：具有公共部分的布局【 一般用在 目录层级 eg: 系统管理 】</p>
-                  <p class="mb-2">
-                    2. 中间目录：【 三级路由或三级以上时，除第一级路由和最后一级路由，其余的采用该布局 eg: 日志管理 】
-                  </p>
-                  <p>3. 常规页面：作为子路由，使用自身的布局【一般作为最后一级路由，没有子路由时使用 eg: 菜单管理】</p>
-                  <p>4. iframe：页面内打开 iframe，此时请填写上面的iframe地址</p>
-                </div>
-              </div>
-            </NPopover>
-          </template>
-          <NRadioGroup v-model:value="form.component">
-            <NRadio v-if="form.menuType === 'M'" value="basic">一级目录</NRadio>
-            <NRadio v-if="form.menuType === 'M'" value="multi">中间目录</NRadio>
-            <NRadio v-if="form.menuType === 'C'" value="self">常规页面</NRadio>
-            <NRadio v-if="form.menuType === 'C'" value="iframe">iframe</NRadio>
+        <NFormItem label="显示图标">
+          <NInput v-model:value="form.icon" readonly placeholder="点击选择图标" @click="openIconDialog">
+            <template #suffix>
+              <SvgIcon :local-icon="form.icon" class="p-5px text-30px" />
+            </template>
+          </NInput>
+        </NFormItem>
+        <NFormItem v-if="form.menuType === 'C'" label="路由参数">
+          <NDynamicInput v-model:value="form.query" preset="pair" key-placeholder="key" value-placeholder="value" />
+        </NFormItem>
+        <NFormItem label="按钮">
+          <NDynamicInput
+            v-model:value="form.buttons"
+            preset="pair"
+            key-placeholder="按钮名称"
+            value-placeholder="权限标识"
+          />
+        </NFormItem>
+        <NFormItem v-if="form.menuType === 'C'" label="新页面打开">
+          <NRadioGroup v-model:value="form.isFrame">
+            <NRadio value="0">是</NRadio>
+            <NRadio value="1">否</NRadio>
           </NRadioGroup>
         </NFormItem>
         <NFormItem v-if="form.menuType === 'C'">
@@ -292,35 +300,19 @@ const openIconDialog = () => {
             <NPopover trigger="hover">
               <template #trigger>
                 <div class="flex items-center justify-end">
-                  使用项目布局
+                  多页签
                   <SvgIcon class="ml-0.5 text-lg color-gray" local-icon="notice-icon"></SvgIcon>
                 </div>
               </template>
-              <div>
-                <p>项目布局指的是：带有 左侧sider/顶部header等</p>
-                <p>如果不使用的话，则直接展示该页面</p>
-              </div>
+              <div>默认情况下，相同路径的路由会共享一个标签页，若设置为true，则使用多个标签页</div>
             </NPopover>
           </template>
-          <NRadioGroup v-model:value="form.singleLayout">
-            <NRadio value="">是</NRadio>
-            <NRadio value="blank">否</NRadio>
+          <NRadioGroup v-model:value="form.multiTab">
+            <NRadio :value="true">是</NRadio>
+            <NRadio :value="false">否</NRadio>
           </NRadioGroup>
         </NFormItem>
-        <NFormItem v-if="form.menuType != 'F'" label="显示图标">
-          <NInput v-model:value="form.icon" readonly placeholder="点击选择图标" @click="openIconDialog">
-            <template #suffix>
-              <SvgIcon :local-icon="form.icon" class="p-5px text-30px" />
-            </template>
-          </NInput>
-        </NFormItem>
-        <NFormItem v-if="form.menuType === 'C'" label="是否新页面打开">
-          <NRadioGroup v-model:value="form.isFrame">
-            <NRadio value="0">是</NRadio>
-            <NRadio value="1">否</NRadio>
-          </NRadioGroup>
-        </NFormItem>
-        <NFormItem v-if="form.menuType != 'F'" label="显示状态">
+        <NFormItem label="显示状态">
           <NRadioGroup v-model:value="form.visible">
             <NRadio value="0">显示</NRadio>
             <NRadio value="1">隐藏</NRadio>
@@ -335,10 +327,10 @@ const openIconDialog = () => {
             <NRadio value="1">停用</NRadio>
           </NRadioGroup>
         </NFormItem>
-        <NFormItem v-if="form.menuType == 'C'" label="是否缓存" path="menuName">
+        <NFormItem v-if="form.menuType == 'C'" label="是否缓存" path="isCache">
           <NRadioGroup v-model:value="form.isCache">
-            <NRadio value="0">缓存</NRadio>
-            <NRadio value="1">不缓存</NRadio>
+            <NRadio value="0">是</NRadio>
+            <NRadio value="1">否</NRadio>
           </NRadioGroup>
         </NFormItem>
         <NFormItem v-if="form.menuType == 'C'" label="tab可关闭">

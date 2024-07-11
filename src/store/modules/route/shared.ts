@@ -115,7 +115,7 @@ export function updateLocaleOfGlobalMenus(menus: App.Global.Menu[]) {
 }
 
 /**
- * Get global menu by route
+ * Get global menu by route 最终 route-store 中的 menus
  *
  * @param route
  */

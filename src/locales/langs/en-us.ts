@@ -162,7 +162,9 @@ const local: App.I18n.Schema = {
     exception_404: '404',
     exception_500: '500',
     system: 'system',
-    system_menu: 'menu'
+    system_menu: 'menu',
+    'g-test': 'g-test',
+    'g-test_menu-test': 'menu-test'
   },
   page: {
     login: {

@@ -35,19 +35,21 @@ const rules: FormRules = {
   imgCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 };
 
-async function handleSubmit() {
-  await validate();
-  await authStore.login(model.userName, model.password, model.imgCode, model.uuid);
-}
-
 // 获取验证码
 const imgCode = ref<string>();
-const getCodeImgFun = async () => {
+async function getCodeImgFun() {
   const { data } = await getCodeImg();
   imgCode.value = `data:image/gif;base64,${data.img}`;
   model.uuid = data.uuid;
-};
+}
 getCodeImgFun();
+
+async function handleSubmit() {
+  await validate();
+  await authStore.login(model.userName, model.password, model.imgCode, model.uuid, true, () => {
+    getCodeImgFun();
+  });
+}
 </script>
 
 <template>
